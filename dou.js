@@ -12,26 +12,27 @@ import { response } from "express";
 //const { join } = require("path");
 //const download = require("download");
 //const fs = require("fs");
+
 let dados = [];
+let count = 1;
 //URL DO DIÁRIO
-const url =
-  "https://in.gov.br/servicos/diario-oficial-da-uniao/destaques-do-diario-oficial-da-uniao?p_p_id=com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_mhF1RLPnJWPh&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_mhF1RLPnJWPh_delta=20&p_r_p_resetCur=false&_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_mhF1RLPnJWPh_cur=2";
+const url_dou = `https://in.gov.br/web/guest/servicos/diario-oficial-da-uniao/destaques-do-diario-oficial-da-uniao?p_p_id=com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_mhF1RLPnJWPh&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_mhF1RLPnJWPh_delta=20&p_r_p_resetCur=false&_com_liferay_asset_publisher_web_portlet_AssetPublisherPortlet_INSTANCE_mhF1RLPnJWPh_cur=${count}`;
 
 //Função de Scraping
-async function buscaDados({ page }) {
+async function buscaDados({ page, data: { url } }) {
   console.log("2-Executando Render");
   // const browser = await puppeteer.launch();
   // const page = await browser.newPage();
+
   await page.goto(url, { waitUntil: "networkidle2" });
-  console.log("3-Abrindo Página");
+  console.log(`3-Abrindo Página: ${url}`);
   const resultsSelector = ".lista-de-dou";
 
   let dou_detalhes = await page.evaluate(() => {
     //Extrai os detalhes básicos de cada diario
     let listaDOU = document.querySelector(".lista-de-dou");
-    console.log("ListaDOU");
+
     let diarios = Array.from(listaDOU.children);
-    console.log("diarios");
 
     // Percorra cada diario e obtenha seus detalhes
     let diario_info = diarios.map((diarios) => {
@@ -46,21 +47,30 @@ async function buscaDados({ page }) {
     return diario_info;
   });
 
-  [...dados] = dou_detalhes;
   //Criando um arquivo JSON com os dados buscados
   // fs.writeFile("dados", JSON.stringify(dou_detalhes, null, 2), (err) => {
   //   if (err) throw new Error("Erro ao criar arquivo.");
   // });
-
+  console.log(dou_detalhes);
   console.log("4-Finalidando o Render");
+
+  dados = Array.from(dou_detalhes);
   await browser.close();
 }
 //FUNÇÃO PARA GERAR PDFs
 async function gerarPDF({ page, data: { item } }) {
+  console.log("Verificando se há ID existente...");
+  let id = v1();
+  // try {
+  //   await axios.get("https://reader-gov-back.cyclic.app/documents/get-all/dou", item);
+  // } catch (error) {
+  //   console.error(error);
+  // }
+
   console.log("Entrando na função gerarPDFs");
   await page.goto(item.pdf, { waitUntil: "networkidle2" });
   console.log("Navegando da Página...");
-  let id = v1();
+
   const output = `./public/${id}.pdf`;
   console.log("Pasta criada.");
   await page.pdf({
@@ -71,10 +81,11 @@ async function gerarPDF({ page, data: { item } }) {
   });
   //FAZENDO POST NA COLLECTION DOCUMENTOS
   try {
+    item["document_id"] = id;
     item["pdf"] = `142.93.58.94:8081/${id}.pdf`;
-    await axios.post("https://reader-gov-back.cyclic.app/documents", item);
+    await axios.post("https://reader-gov-back.cyclic.app/documents/dou", item);
   } catch (error) {
-    console.error(error);
+    console.error(error.response.status, response.statusText);
   }
 
   console.log("PDF gerado!", output);
@@ -93,13 +104,27 @@ async function main() {
     });
 
     //EXECUTANDO BUSCA
-    await cluster.task(buscaDados);
-    await cluster.queue();
-    console.log("1-Executando busca de dados.");
-    await cluster.idle();
-    console.log("5-IDLE de Busca executado");
-    await cluster.close();
-    console.log("6-Cluster de Busca fechado");
+    try {
+      let url = `${url_dou}${count}`;
+      await cluster.task(buscaDados);
+      await cluster.queue({ url });
+      console.log("1-Executando busca de dados.");
+      await cluster.idle();
+      console.log("5-IDLE de Busca executado");
+      await cluster.close();
+      console.log("6-Cluster de Busca fechado");
+    } catch (error) {
+      console.log("Erro na busca!");
+      count = +1;
+      await cluster.task(buscaDados);
+      await cluster.queue({ url });
+      console.log("Executando nova busca...");
+      await cluster.idle();
+      console.log("5-IDLE de Busca executado");
+      await cluster.close();
+      console.log("6-Cluster de Busca fechado");
+    }
+
     //console.log(dados);
 
     //GERANDO PDFs DAS PÁGINAS
@@ -121,4 +146,3 @@ async function main() {
 // main();
 
 export default main;
-
