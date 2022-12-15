@@ -1,0 +1,34 @@
+{
+  "name": "digitalocean",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon",
+    "production": "pm2 start index.js --name Scarping"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robertomalheiros/digitalocean.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/robertomalheiros/digitalocean/issues"
+  },
+  "homepage": "https://github.com/robertomalheiros/digitalocean#readme",
+  "dependencies": {
+    "axios": "^1.2.1",
+    "dotenv": "^16.0.3",
+    "download": "^8.0.0",
+    "express": "^4.18.2",
+    "node-schedule": "^2.1.0",
+    "nodemon": "^2.0.20",
+    "puppeteer": "^19.4.0",
+    "puppeteer-cluster": "^0.23.0",
+    "uuid": "^9.0.0"
+  }
+}

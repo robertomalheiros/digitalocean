@@ -35,15 +35,28 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-//LENDO JSON DO DISCO
-//fs.readFile(caminho, "utf-8", (err, conteudo) => {
-//  diarios = JSON.parse(conteudo);
-//});
+
+
+const corsOptions = {
+    origin: "*",
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+app.use(express.static('public'));
 
 app.get("/", (req, res, next) => {
   res.send("Scraping Funcionando!");
 });
 
-app.listen(8081, () => {
-  console.log("Server na porta 8081.");
+app.post("/sei", (req, res, next) => {
+  res.send("Scraping Funcionando!");
 });
+
+
+const port = process.env.PORT;
+
+app.listen( port, () => { console.log(`App up and running on http://localhost:${port}`) })
+
